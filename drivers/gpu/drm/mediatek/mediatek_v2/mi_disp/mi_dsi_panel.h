@@ -22,7 +22,6 @@
 #include <drm/drm_crtc_helper.h>
 #include <linux/clk.h>
 #include <linux/sched.h>
-#include <linux/delay.h>
 #include <linux/sched/clock.h>
 #include <linux/component.h>
 #include <linux/irq.h>
@@ -95,44 +94,6 @@ struct mtk_dsi_mgr {
 	struct mtk_dsi *slave;
 };
 
-struct lcm {
-	struct device *dev;
-	struct drm_panel panel;
-	struct backlight_device *backlight;
-	struct gpio_desc *reset_gpio;
-	struct gpio_desc *bias_pos;
-	struct gpio_desc *dvdd_gpio;
-	struct gpio_desc *cam_gpio;
-	struct gpio_desc *leden_gpio;
-	struct gpio_desc *vddi_gpio;
-
-	bool prepared;
-	bool enabled;
-	bool hbm_en;
-	bool wqhd_en;
-	bool dc_status;
-	bool hbm_enabled;
-	bool lhbm_en;
-	bool doze_suspend;
-
-	int error;
-	const char *panel_info;
-	int dynamic_fps;
-	u32 doze_brightness_state;
-
-	struct pinctrl *pinctrl_gpios;
-	struct pinctrl_state *err_flag_irq;
-
-	u32 max_brightness_clone;
-	u32 factory_max_brightness;
-	struct mutex panel_lock;
-	int bl_max_level;
-	int gir_status;
-	int spr_status;
-	int crc_level;
-	int peak_hdr_status;
-};
-
 struct mi_dsi_panel_cfg {
 	struct mtk_dsi *dsi;
 
@@ -149,7 +110,6 @@ struct mi_dsi_panel_cfg {
 	 */
 	bool bl_is_big_endian;
 	u32 last_bl_level;
-	u32 last_no_zero_bl_level;
 
 	/* indicate refresh frequency Fps gpio */
 	int disp_rate_gpio;
@@ -174,7 +134,6 @@ struct mi_dsi_panel_cfg {
 	u32 brightness_clone;
 	u32 real_brightness_clone;
 	u32 max_brightness_clone;
-	u32 factory_max_brightness;
 	u32 thermal_max_brightness_clone;
 	unsigned long thermal_state;
 
@@ -182,23 +141,14 @@ struct mi_dsi_panel_cfg {
 	bool fod_hbm_flag;
 	bool normal_hbm_flag;
 	bool dc_flag;
-	bool local_hbm_enabled;
 
 #ifdef CONFIG_MI_DISP_FOD_SYNC
 	bool bl_enable;
 	bool bl_wait_frame;
 	bool aod_wait_frame;
-#ifdef CONFIG_MI_DISP_DOZE_SUSPEND
-	bool fod_anim_flag;
 #endif
-#endif
-
 	enum crc_mode crc_state;
 	enum gir_mode gir_state;
-	u32 lhbm_ui_ready_delay_frame;
-	u32 lhbm_ui_ready_delay_frame_aod;
-	bool need_fod_animal_in_normal;
-
 };
 
 struct mtk_dsi {
@@ -284,8 +234,6 @@ struct mtk_dsi {
 #ifdef CONFIG_MI_DISP_FOD_SYNC
 	struct mi_layer_state mi_layer_state;
 #endif
-	const char * display_type;
-	bool need_fod_animal_in_normal;
 };
 
 
@@ -355,6 +303,7 @@ int mi_dsi_panel_set_brightness(struct mtk_dsi *dsi,
 			int brightness);
 int mi_dsi_panel_get_brightness(struct mtk_dsi *dsi,
 			u32 *brightness);
+int mi_dsi_panel_set_disp_param(struct mtk_dsi *dsi, struct disp_feature_ctl *ctl);
 
 ssize_t mi_dsi_panel_write_mipi_reg(char *buf);
 
@@ -384,9 +333,5 @@ void mi_dsi_panel_rewrite_enterDClut(char *exitDClut, char *enterDClut, int coun
 ssize_t mi_dsi_panel_read_and_update_dc_param(struct mtk_dsi *dsi);
 
 int mi_dsi_panel_get_wp_info(struct mtk_dsi *dsi, char *buf, size_t size);
-
-int mi_dsi_panel_get_grayscale_info(struct mtk_dsi *dsi, char *buf, size_t size);
-
-bool is_aod_and_panel_initialized(struct mtk_dsi *dsi);
 
 #endif /* _DSI_PANEL_MI_H_ */
